@@ -1,0 +1,31 @@
+name: proof desktop source check (temporary)
+
+on:
+  push:
+    branches: ['proof/desktop-source-check-git']
+
+permissions:
+  contents: read
+
+jobs:
+  leg:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - leg: base
+            branch: main
+            commit: 046094df28b712f62a5e3c728a9e59da05dcbf1e
+          - leg: head
+            branch: fix/desktop-update-check-pm-git
+            commit: f2e8824eb5ddeb78ef001387f9f1cedd41c23055
+    name: ${{ matrix.leg }}
+    runs-on: windows-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v4
+        timeout-minutes: 5
+      - name: Fresh install + Desktop source check
+        shell: powershell
+        timeout-minutes: 55
+        run: python .github/proof_driver.py ${{ matrix.branch }} ${{ matrix.commit }} ${{ matrix.leg }}
