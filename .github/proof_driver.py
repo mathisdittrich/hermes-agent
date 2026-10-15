@@ -13,6 +13,8 @@ import subprocess
 import sys
 import urllib.request
 
+sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+
 BRANCH, COMMIT, LEG = sys.argv[1], sys.argv[2], sys.argv[3]
 LAD = os.environ["LOCALAPPDATA"]
 HH = os.path.join(LAD, "hermes")
@@ -71,7 +73,10 @@ if check.stderr.strip():
     print(f"[{LEG}] desktop source check stderr (tail):", check.stderr.strip()[-1500:])
 status = json.loads(check.stdout)
 
-cli = subprocess.run([launcher, "update", "--check"], cwd=ROOT, env=dict(env, HERMES_HOME=HH),
+porcelain = subprocess.run([glob.glob(os.path.join(HH, "tools", "git-*", "cmd", "git.exe"))[0], "-C", ROOT, "status", "--porcelain"],
+                           capture_output=True, text=True).stdout.strip()
+print(f"[{LEG}] git status --porcelain on the fresh install:", porcelain[:1500] or "(clean)")
+cli = subprocess.run([launcher, "update", "--check"], cwd=ROOT, env=dict(env, HERMES_HOME=HH, PYTHONIOENCODING="utf-8"),
                      capture_output=True, text=True, encoding="utf-8", errors="replace", timeout=600)
 print(f"[{LEG}] hermes update --check exit:", cli.returncode)
 print(f"[{LEG}] hermes update --check output (tail):", (cli.stdout + cli.stderr).strip()[-1200:])
