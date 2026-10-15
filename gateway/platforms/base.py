@@ -970,8 +970,10 @@ def _parse_docker_volume_mounts() -> list[tuple[Path, Path]]:
     mounts: list[tuple[Path, Path]] = []
     for entry in parsed if isinstance(parsed, list) else ():
         spec = entry.strip() if isinstance(entry, str) else ""
-        # Prefer the first ':/' so absolute container paths are unambiguous.
-        sep = spec.find(":/")
+        # Prefer the first ':/' so absolute container paths are unambiguous; skip a
+        # Windows drive colon (``C:/data:/workspace``) so drive-letter hosts parse.
+        drive = len(spec) > 2 and spec[0].isalpha() and spec[1] == ":" and spec[2] in "/\\"
+        sep = spec.find(":/", 2 if drive else 0)
         if sep <= 0:
             continue
         container_raw = spec[sep + 1:].split(":", 1)[0]  # starts with /
@@ -1086,7 +1088,8 @@ def _warn_unresolved_docker_media(candidate: Path, session_key: str, reason: str
 def _translate_docker_container_media_path(candidate: Path, session_key: str = "") -> Optional[Path]:
     """Container-absolute path -> host path via longest-prefix match over ``docker_volumes``, the
     auto-mounted cache dirs (``/root/.hermes/...``), persistent ``/workspace`` and ``/root``."""
-    if not candidate.is_absolute():
+    # Container paths are POSIX even on a Windows gateway, where Path("/x").is_absolute() is False.
+    if not candidate.as_posix().startswith("/"):
         return None
     # In-process gateways (Desktop, `hermes serve`) may not have bridged terminal.* config into
     # TERMINAL_* env yet; the bridge is idempotent.
